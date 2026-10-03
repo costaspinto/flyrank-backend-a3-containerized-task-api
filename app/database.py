@@ -33,13 +33,18 @@ def init_db():
             count = cur.fetchone()[0]
 
             if count == 0:
+                seed_tasks = [
+                    ("Learn FastAPI with PostgreSQL", False),
+                    ("Build the FlyRank A3 API", False),
+                    ("Containerize the application", False),
+                ]
+
                 cur.executemany(
-                    "INSERT INTO tasks (title, done) VALUES (%s, %s)",
-                    [
-                        ("Learn FastAPI with PostgreSQL", False),
-                        ("Build the FlyRank A3 API", False),
-                        ("Containerize the application", False),
-                    ],
+                    """
+                    INSERT INTO tasks (title, done)
+                    VALUES (%s, %s)
+                    """,
+                    seed_tasks,
                 )
 
         conn.commit()
@@ -49,8 +54,13 @@ def list_tasks():
     with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT id, title, done FROM tasks ORDER BY id"
+                """
+                SELECT id, title, done
+                FROM tasks
+                ORDER BY id
+                """
             )
+
             rows = cur.fetchall()
 
     return [
@@ -63,13 +73,18 @@ def list_tasks():
     ]
 
 
-def get_task(task_id):
+def get_task(task_id: int):
     with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT id, title, done FROM tasks WHERE id = %s",
+                """
+                SELECT id, title, done
+                FROM tasks
+                WHERE id = %s
+                """,
                 (task_id,),
             )
+
             row = cur.fetchone()
 
     if row is None:
@@ -82,7 +97,7 @@ def get_task(task_id):
     }
 
 
-def create_task(title, done=False):
+def create_task(title: str, done: bool = False):
     with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -93,6 +108,7 @@ def create_task(title, done=False):
                 """,
                 (title, done),
             )
+
             row = cur.fetchone()
 
         conn.commit()
@@ -102,3 +118,48 @@ def create_task(title, done=False):
         "title": row[1],
         "done": row[2],
     }
+
+
+def update_task(task_id: int, title: str, done: bool):
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE tasks
+                SET title = %s, done = %s
+                WHERE id = %s
+                RETURNING id, title, done
+                """,
+                (title, done, task_id),
+            )
+
+            row = cur.fetchone()
+
+        conn.commit()
+
+    if row is None:
+        return None
+
+    return {
+        "id": row[0],
+        "title": row[1],
+        "done": row[2],
+    }
+
+
+def delete_task(task_id: int):
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                DELETE FROM tasks
+                WHERE id = %s
+                """,
+                (task_id,),
+            )
+
+            deleted = cur.rowcount
+
+        conn.commit()
+
+    return deleted > 0
