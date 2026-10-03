@@ -1,9 +1,15 @@
 from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 
-from app.database import get_task, init_db, list_tasks
+from app.database import create_task, get_task, init_db, list_tasks
 
 
 app = FastAPI(title="FlyRank A3 Task API")
+
+
+class TaskCreate(BaseModel):
+    title: str
+    done: bool = False
 
 
 @app.on_event("startup")
@@ -29,3 +35,8 @@ def get_task_by_id(task_id: int):
         raise HTTPException(status_code=404, detail="Task not found")
 
     return task
+
+
+@app.post("/tasks", status_code=201)
+def post_task(task: TaskCreate):
+    return create_task(task.title, task.done)
